@@ -38,7 +38,7 @@ test('load follows pagination and downloads without sending Graph credentials', 
   const drive = new OneDriveTest(async () => 'test-token', async (url, options) => {
     if (url.includes('/children?')) return json({value:[{id:'older',name:'household-finances-connection-test-old.json',lastModifiedDateTime:'2026-09-01T00:00:00Z'}], '@odata.nextLink':'https://graph.microsoft.com/v1.0/page-two'});
     if (url.endsWith('/page-two')) return json({value:[{id:'newest',name:'household-finances-connection-test-new.json',lastModifiedDateTime:'2026-09-06T00:00:00Z'}]});
-    if (url.includes('/approot:')) return json({id:'newest',size:200,'@microsoft.graph.downloadUrl':'https://download.example.test/signed-sample'});
+    if (url.includes('/items/newest?')) return json({id:'newest',size:200,'@microsoft.graph.downloadUrl':'https://download.example.test/signed-sample'});
     assert.equal(url, 'https://download.example.test/signed-sample');
     assert.equal(options.headers, undefined);
     assert.equal(options.credentials, 'omit');
