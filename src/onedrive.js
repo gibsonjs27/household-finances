@@ -87,9 +87,9 @@ export class OneDriveTest {
     candidates.sort((a, b) => String(b.lastModifiedDateTime).localeCompare(String(a.lastModifiedDateTime)) || b.name.localeCompare(a.name));
     const latest = candidates[0];
     if (latest.size > MAX_BYTES) throw new ConnectionError('The latest sample is larger than expected. Save a new test sample.');
-    // Graph returns the browser-safe, preauthenticated download URL from the
-    // item's canonical ID endpoint; the app-folder scope still confines access.
-    const metadata = await this.request(`/me/drive/items/${encodeURIComponent(latest.id)}?$select=id,size,@microsoft.graph.downloadUrl`);
+    // Request the complete item metadata. Some personal OneDrive responses omit
+    // the preauthenticated browser download address when it appears in $select.
+    const metadata = await this.request(`/me/drive/items/${encodeURIComponent(latest.id)}`);
     const address = metadata['@microsoft.graph.downloadUrl'];
     if (typeof address !== 'string' || !address.startsWith('https://') || metadata.size > MAX_BYTES) throw new ConnectionError('OneDrive did not return a valid sample download.');
     // Graph /content redirects fail CORS preflight in browsers. Use its signed URL,
