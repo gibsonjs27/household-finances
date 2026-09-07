@@ -1,1 +1,44 @@
-test
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="description" content="Connect Household Finances to your personal OneDrive.">
+  <meta name="theme-color" content="#122b40">
+  <title>Household Finances · Connection setup</title>
+  <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./assets/app.js"></script>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar" aria-label="Application information">
+      <div class="brand"><span class="brand-icon" aria-hidden="true">H</span><span>Household<br><strong>Finances</strong></span></div>
+      <p class="eyebrow sidebar-label">GETTING STARTED</p>
+      <div class="current-page"><span aria-hidden="true">◎</span> Connection setup</div>
+      <div class="roadmap"><p class="eyebrow">NEXT, WE’LL ADD</p><ul><li>Monthly budget</li><li>Transactions</li><li>Accounts &amp; net worth</li><li>Debt payoff</li></ul></div>
+      <div class="sidebar-footer"><span class="small-dot"></span> Your OneDrive. Your records.<p>This version tests the connection only.</p></div>
+    </aside>
+    <main>
+      <header class="topbar"><span class="breadcrumb">Household Finances <span>/</span> Setup</span><span class="version">CONNECTION TEST · 0.1</span></header>
+      <div class="content">
+        <div class="heading"><div><p class="eyebrow">FIRST, A SIMPLE CONNECTION CHECK</p><h1>Connect your OneDrive</h1><p class="intro">Sign in, save a sample, then open it on another device.<br>Your budget and financial records come later.</p></div><span id="connection-badge" class="badge">Not connected</span></div>
+        <div id="notice" class="notice" role="status" aria-live="polite">Preparing Microsoft sign-in…</div>
+        <section class="connection-card" aria-labelledby="account-heading">
+          <div class="card-heading"><span class="step-number">01</span><div><h2 id="account-heading">Your Microsoft account</h2><p>Use the personal account that owns your OneDrive.</p></div><span id="account-state" class="step-state">Not signed in</span></div>
+          <div class="account-row"><div><span class="field-label">SIGNED IN AS</span><p id="account-name" class="account-name">No account connected</p><p class="muted">Microsoft handles your password and sign-in.</p></div><div class="account-actions"><button id="sign-in" class="button primary" disabled><span class="ms-icon" aria-hidden="true"><i></i><i></i><i></i><i></i></span>Sign in with Microsoft</button><button id="sign-out" class="button secondary" hidden>Sign out</button></div></div>
+        </section>
+        <div class="test-grid">
+          <section class="test-card" aria-labelledby="save-heading"><div class="card-heading"><span class="step-number">02</span><h2 id="save-heading">Save a sample</h2></div><p>Create a small test file in this app’s OneDrive folder. Each save creates a new sample.</p><div class="sample-preview"><span class="field-label">SAMPLE CONTENT</span><p>“Household Finances connection test”</p><span class="muted">A generated test code and save time. No financial data.</span></div><button id="save-sample" class="button primary" disabled>Save sample to OneDrive <span aria-hidden="true">↑</span></button><p id="save-status" class="action-status">Sign in to enable saving.</p></section>
+          <section class="test-card" aria-labelledby="load-heading"><div class="card-heading"><span class="step-number">03</span><h2 id="load-heading">Load it back</h2></div><p>Read the latest sample from OneDrive. Try this on your phone to check access across devices.</p><div id="loaded-sample" class="sample-preview empty"><span class="field-label">LATEST SAMPLE</span><p id="sample-code">No sample loaded yet</p><span id="sample-time" class="muted">Your saved test code will appear here.</span></div><button id="load-sample" class="button secondary" disabled>Load latest sample <span aria-hidden="true">↓</span></button><p id="load-status" class="action-status">Sign in to enable loading.</p></section>
+        </div>
+        <section class="device-check"><div class="device-symbol" aria-hidden="true">↗</div><div><h2>Finish the check on a second device</h2><p>Open this same address, sign in with the same account, and select <strong>Load latest sample</strong>. Compare the test code with the one saved here.</p><a href="https://gibsonjs27.github.io/household-finances/">gibsonjs27.github.io/household-finances/</a></div></section>
+        <details><summary>What this app can access</summary><p>The connection requests access to its own application folder in OneDrive, not your entire drive. The website code is public on GitHub Pages; test files are saved to your signed-in account. No workbook or CSV is uploaded by this version.</p><p>Sign out when you’re finished on a shared device. This test does not yet validate financial-data backups or simultaneous editing.</p></details>
+        <footer>Household Finances <span>Connection setup · September 2026</span></footer>
+      </div>
+    </main>
+  </div>
+  <noscript>This connection test needs JavaScript enabled in your browser.</noscript>
+</body>
+</html>

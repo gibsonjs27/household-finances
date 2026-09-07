@@ -1,0 +1,125 @@
+import { PublicClientApplication, InteractionRequiredAuthError, CacheLookupPolicy } from '@azure/msal-browser';
+import { CLIENT_ID, SITE_URL, AUTHORITY, SCOPES } from './config.js';
+import { OneDriveTest, ConnectionError } from './onedrive.js';
+
+const $ = id => document.getElementById(id);
+const production = location.origin === new URL(SITE_URL).origin && location.pathname.startsWith(new URL(SITE_URL).pathname);
+let busy = false;
+let ready = false;
+let account = null;
+const msal = new PublicClientApplication({
+  auth: { clientId: CLIENT_ID, authority: AUTHORITY, redirectUri: SITE_URL, postLogoutRedirectUri: SITE_URL, navigateToLoginRequestUrl: false },
+  cache: { cacheLocation: 'sessionStorage' },
+});
+
+function notice(text, kind = '') { $('notice').textContent = text; $('notice').className = `notice ${kind}`; }
+function displayAccount() {
+  $('account-name').textContent = account?.username || account?.name || 'No account connected';
+  $('account-state').textContent = account ? 'Signed in' : 'Not signed in';
+  $('connection-badge').textContent = account ? 'Microsoft connected' : 'Not connected';
+  $('connection-badge').className = account ? 'badge connected' : 'badge';
+  $('sign-in').hidden = !!account;
+  $('sign-out').hidden = !account;
+  $('sign-in').disabled = busy || !ready || !production;
+  $('sign-out').disabled = busy;
+  $('save-sample').disabled = busy || !ready || !account || !production;
+  $('load-sample').disabled = busy || !ready || !account || !production;
+  document.querySelector('main').setAttribute('aria-busy', String(busy));
+}
+
+function clearResults() {
+  $('sample-code').textContent = 'No sample loaded yet'; $('sample-code').className = '';
+  $('sample-time').textContent = 'Your saved test code will appear here.';
+  $('loaded-sample').classList.add('empty');
+  $('save-status').textContent = 'Sign in to enable saving.';
+  $('load-status').textContent = 'Sign in to enable loading.';
+}
+
+function friendlyError(error) {
+  if (error instanceof ConnectionError) return error.message;
+  const code = String(error?.errorCode || '');
+  if (code.includes('interaction_in_progress')) return 'A Microsoft sign-in is already in progress. Complete it, or reload this page and try again.';
+  if (code.includes('user_cancelled') || code.includes('access_denied')) return 'Sign-in was cancelled or permission was declined. You can try again when ready.';
+  if (code.includes('network') || code.includes('timeout')) return 'Microsoft sign-in could not connect. Check your internet connection and try again.';
+  return 'Microsoft sign-in could not finish. Check the app’s SPA redirect address, personal-account support, and delegated OneDrive app-folder permission, then try again.';
+}
+
+async function act(work) {
+  if (busy) return;
+  busy = true; displayAccount();
+  try { await work(); }
+  catch (error) { notice(friendlyError(error), 'error'); }
+  finally { busy = false; displayAccount(); }
+}
+
+async function token() {
+  if (!account) throw new ConnectionError('Sign in before accessing OneDrive.');
+  try {
+    const result = await msal.acquireTokenSilent({ account, scopes: SCOPES, cacheLookupPolicy: CacheLookupPolicy.AccessTokenAndRefreshToken });
+    return result.accessToken;
+  } catch (error) {
+    if (error instanceof InteractionRequiredAuthError || ['token_refresh_required', 'refresh_token_expired', 'no_tokens_found'].includes(error?.errorCode)) {
+      notice('Microsoft needs you to sign in again. After returning, repeat your save or load.');
+      await msal.acquireTokenRedirect({ account, scopes: SCOPES });
+    }
+    throw error;
+  }
+}
+const drive = new OneDriveTest(token);
+
+$('sign-in').addEventListener('click', () => act(async () => {
+  notice('Opening Microsoft sign-in…');
+  await msal.loginRedirect({ scopes: SCOPES, prompt: 'select_account' });
+}));
+$('sign-out').addEventListener('click', () => act(async () => {
+  const signedIn = account;
+  account = null; clearResults(); displayAccount();
+  notice('Signing out of Microsoft…');
+  await msal.logoutRedirect({ account: signedIn, postLogoutRedirectUri: SITE_URL });
+}));
+$('save-sample').addEventListener('click', () => act(async () => {
+  notice('Saving a new sample to your OneDrive app folder…');
+  const { sample } = await drive.save();
+  $('save-status').textContent = `Saved test code: ${sample.code}`;
+  notice('Sample saved to OneDrive. Select Load latest sample here or on your other device to compare the test code.', 'success');
+}));
+$('load-sample').addEventListener('click', () => act(async () => {
+  notice('Reading the latest sample from OneDrive…');
+  const sample = await drive.load();
+  if (!sample) {
+    $('sample-code').textContent = 'No sample found'; $('sample-code').className = '';
+    $('sample-time').textContent = 'Save a sample with this Microsoft account first.';
+    $('loaded-sample').classList.add('empty');
+    $('load-status').textContent = 'OneDrive connected; no test sample found.';
+    notice('Your OneDrive connection worked. No sample exists yet—save one first.');
+    return;
+  }
+  $('sample-code').textContent = sample.code; $('sample-code').className = 'loaded';
+  $('sample-time').textContent = `Saved ${new Date(sample.savedAt).toLocaleString()}`;
+  $('loaded-sample').classList.remove('empty');
+  $('load-status').textContent = 'Loaded directly from OneDrive.';
+  notice('Sample loaded successfully. A matching test code on your second device confirms access to the same saved file.', 'success');
+}));
+
+async function start() {
+  try {
+    if (!production) {
+      notice('Local preview. Microsoft sign-in is enabled at the published GitHub Pages address.');
+      return;
+    }
+    await msal.initialize();
+    const response = await msal.handleRedirectPromise();
+    if (response?.account) msal.setActiveAccount(response.account);
+    account = msal.getActiveAccount();
+    ready = true;
+    notice(account ? 'Microsoft sign-in is complete. Save or load a sample to check your OneDrive connection.' : 'Ready to connect. Sign in with your personal Microsoft account.');
+    if (account) {
+      $('save-status').textContent = 'Ready to save a sample.';
+      $('load-status').textContent = 'Ready to read from OneDrive.';
+    }
+  } catch (error) {
+    // Initialization failures cannot be recovered by calling login on an uninitialized instance.
+    ready = false; notice(friendlyError(error) + ' Reload the page after correcting the setting.', 'error');
+  } finally { displayAccount(); }
+}
+start();

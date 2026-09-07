@@ -1,0 +1,17 @@
+node_modules/
+.env
+.env.*
+*.csv
+*.xlsx
+*.xls
+*.ofx
+*.qfx
+*.qif
+*.pdf
+*.zip
+private/
+data/
+backups/
+exports/
+.DS_Store
+*.log
