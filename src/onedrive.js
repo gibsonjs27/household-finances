@@ -44,7 +44,7 @@ export class OneDriveTest {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     try {
-      response = await this.fetcher(url.href, {
+      response = await this.fetcher.call(globalThis, url.href, {
         ...options, credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer',
         signal: controller.signal,
         headers: { ...options.headers, Authorization: `Bearer ${token}` },
@@ -96,7 +96,7 @@ export class OneDriveTest {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     try {
-      response = await this.fetcher(address, { credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer', signal: controller.signal });
+      response = await this.fetcher.call(globalThis, address, { credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer', signal: controller.signal });
     } catch { throw new ConnectionError('Could not download the sample. Check your connection and try loading again.'); }
     finally { clearTimeout(timeout); }
     if (!response.ok) throw new ConnectionError('The sample download expired or failed. Click Load latest sample again.');

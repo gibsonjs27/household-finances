@@ -67,6 +67,17 @@ test('network failures do not claim a sample was saved', async () => {
   await assert.rejects(drive.save(), /Could not reach OneDrive/);
 });
 
+test('uses the browser context when calling the native fetch function', async () => {
+  const browserContext = {};
+  let receivedContext;
+  const nativeLikeFetch = function () { receivedContext = this; return json({id: 'new-file'}); };
+  const drive = new OneDriveTest(async () => 'test-token', nativeLikeFetch);
+  const originalGlobalThis = globalThis;
+  // The function only needs a browser-style receiver; in Node it is globalThis.
+  await drive.save();
+  assert.equal(receivedContext, originalGlobalThis);
+});
+
 test('rejects an oversized sample without downloading its contents', async () => {
   const drive = new OneDriveTest(async () => 'test-token', async url => {
     return json({value:[{id:'large',name:'household-finances-connection-test-big.json',size:99999}]});
