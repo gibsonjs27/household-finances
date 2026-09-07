@@ -4,6 +4,7 @@ const TEST_KIND = 'household-finances-connection-test';
 const MESSAGE = 'Household Finances connection test';
 const MAX_BYTES = 8192;
 const REQUEST_TIMEOUT_MS = 25000;
+const BUDGET_FILE = 'household-finances-budget-v1.json';
 
 export class ConnectionError extends Error {
   constructor(message, status = 0) { super(message); this.name = 'ConnectionError'; this.status = status; }
@@ -70,6 +71,13 @@ export class OneDriveTest {
     });
     if (!file?.id) throw new ConnectionError('OneDrive did not confirm a saved file. Load the latest sample before retrying.');
     return { sample, name };
+  }
+
+  async saveBudget(budget) {
+    const payload = { schemaVersion: 1, kind: 'household-finances-budget', savedAt: new Date().toISOString(), budget };
+    const file = await this.request(`/me/drive/special/approot:/${BUDGET_FILE}:/content`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    if (!file?.id) throw new ConnectionError('OneDrive did not confirm the budget save.');
+    return payload;
   }
 
   async load() {

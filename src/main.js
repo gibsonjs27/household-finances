@@ -24,6 +24,7 @@ function displayAccount() {
   $('sign-out').disabled = busy;
   $('save-sample').disabled = busy || !ready || !account || !production;
   $('load-sample').disabled = busy || !ready || !account || !production;
+  $('budget-workspace').hidden = !account;
   document.querySelector('main').setAttribute('aria-busy', String(busy));
 }
 
@@ -66,6 +67,23 @@ async function token() {
   }
 }
 const drive = new OneDriveTest(token);
+
+function updateBudgetTotals() {
+  const expenses = [...document.querySelectorAll('[data-budget]')].reduce((sum, input) => sum + (Number(input.value) || 0), 0);
+  const income = Number($('budget-income').value) || 0;
+  $('planned-expenses').textContent = expenses.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+  $('planned-surplus').textContent = (income - expenses).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+}
+document.querySelectorAll('#budget-form input').forEach(input => input.addEventListener('input', updateBudgetTotals));
+$('budget-month').value = new Date().toISOString().slice(0, 7);
+$('budget-form').addEventListener('submit', event => act(async () => {
+  event.preventDefault(); updateBudgetTotals();
+  const categories = Object.fromEntries([...document.querySelectorAll('[data-budget]')].map(input => [input.dataset.budget, Number(input.value) || 0]));
+  $('budget-status').textContent = 'Saving your budget to OneDrive…';
+  const saved = await drive.saveBudget({ month: $('budget-month').value, plannedIncome: Number($('budget-income').value) || 0, categories });
+  $('budget-status').textContent = `Saved to OneDrive ${new Date(saved.savedAt).toLocaleString()}.`;
+  notice('Your monthly budget is saved privately in OneDrive.', 'success');
+}));
 
 $('sign-in').addEventListener('click', () => act(async () => {
   notice('Opening Microsoft sign-in…');
