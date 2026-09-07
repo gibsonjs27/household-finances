@@ -49,8 +49,11 @@ export class OneDriveTest {
         signal: controller.signal,
         headers: { ...options.headers, Authorization: `Bearer ${token}` },
       });
-    } catch {
-      throw new ConnectionError('Could not reach OneDrive. Check your connection and try again.');
+    } catch (error) {
+      const detail = error?.name === 'AbortError'
+        ? 'The request timed out before OneDrive responded.'
+        : `Your browser stopped the request before Microsoft responded (${error?.message || 'network error'}).`;
+      throw new ConnectionError(`Could not reach OneDrive. ${detail}`);
     } finally { clearTimeout(timeout); }
     if (!response.ok) throw responseError(response.status);
     return response.json();
