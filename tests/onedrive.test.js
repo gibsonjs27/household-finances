@@ -4,7 +4,6 @@ import { OneDriveTest, makeSample, validateSample, ConnectionError } from '../sr
 
 const fixed = makeSample(new Date('2026-09-06T12:00:00.000Z'), '01234567-89ab-4def-8123-456789abcdef');
 const json = value => new Response(JSON.stringify(value), { status: 200, headers: {'Content-Type':'application/json'} });
-const folder = {id: 'folder-1', folder: {childCount: 0}};
 
 test('sample contains only synthetic fields and validates before display', () => {
   assert.equal(fixed.code, '0123456789AB');
@@ -18,9 +17,8 @@ test('save uses an isolated app folder and a unique file on each call', async ()
   const writes = [];
   const drive = new OneDriveTest(async () => 'test-token', async (url, options) => {
     assert.equal(options.headers.Authorization, 'Bearer test-token');
-    if (url.endsWith('/special/approot')) return json(folder);
     assert.equal(options.method, 'PUT');
-    assert.match(url, /\/items\/folder-1:\/household-finances-connection-test-/);
+    assert.match(url, /\/special\/approot:\/household-finances-connection-test-/);
     assert.match(url, /\.json:\/content$/);
     validateSample(JSON.parse(options.body));
     writes.push(url); return json({id:'new-file'});
@@ -31,17 +29,16 @@ test('save uses an isolated app folder and a unique file on each call', async ()
 });
 
 test('load returns null only for a successful folder listing with no samples', async () => {
-  const drive = new OneDriveTest(async () => 'test-token', async url => url.endsWith('/approot') ? json(folder) : json({value:[{id:'budget',name:'budget.json'}]}));
+  const drive = new OneDriveTest(async () => 'test-token', async () => json({value:[{id:'budget',name:'budget.json'}]}));
   assert.equal(await drive.load(), null);
 });
 
 test('load follows pagination and downloads without sending Graph credentials', async () => {
   let downloads = 0;
   const drive = new OneDriveTest(async () => 'test-token', async (url, options) => {
-    if (url.endsWith('/approot')) return json(folder);
     if (url.includes('/children?')) return json({value:[{id:'older',name:'household-finances-connection-test-old.json',lastModifiedDateTime:'2026-09-01T00:00:00Z'}], '@odata.nextLink':'https://graph.microsoft.com/v1.0/page-two'});
     if (url.endsWith('/page-two')) return json({value:[{id:'newest',name:'household-finances-connection-test-new.json',lastModifiedDateTime:'2026-09-06T00:00:00Z'}]});
-    if (url.includes('/items/newest?')) return json({id:'newest',size:200,'@microsoft.graph.downloadUrl':'https://download.example.test/signed-sample'});
+    if (url.includes('/approot:')) return json({id:'newest',size:200,'@microsoft.graph.downloadUrl':'https://download.example.test/signed-sample'});
     assert.equal(url, 'https://download.example.test/signed-sample');
     assert.equal(options.headers, undefined);
     assert.equal(options.credentials, 'omit');
@@ -72,7 +69,6 @@ test('network failures do not claim a sample was saved', async () => {
 
 test('rejects an oversized sample without downloading its contents', async () => {
   const drive = new OneDriveTest(async () => 'test-token', async url => {
-    if (url.endsWith('/approot')) return json(folder);
     return json({value:[{id:'large',name:'household-finances-connection-test-big.json',size:99999}]});
   });
   await assert.rejects(drive.load(), /larger than expected/);
@@ -80,7 +76,6 @@ test('rejects an oversized sample without downloading its contents', async () =>
 
 test('ignores a credential-bearing download scheme', async () => {
   const drive = new OneDriveTest(async () => 'test-token', async url => {
-    if (url.endsWith('/approot')) return json(folder);
     if (url.includes('/children')) return json({value:[{id:'sample',name:'household-finances-connection-test-x.json'}]});
     return json({'@microsoft.graph.downloadUrl':'http://unsafe.example/test'});
   });

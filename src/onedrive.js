@@ -53,18 +53,13 @@ export class OneDriveTest {
     return response.json();
   }
 
-  async folder() {
-    const folder = await this.request('/me/drive/special/approot');
-    if (!folder?.id || !folder.folder) throw new ConnectionError('OneDrive did not return an application folder.');
-    return folder;
-  }
-
   async save() {
-    const folder = await this.folder();
     const sample = makeSample();
     // Independent sample files avoid overwriting a prior sample from another device.
     const name = `${PREFIX}${sample.savedAt.replaceAll(':', '-')}-${crypto.randomUUID()}.json`;
-    const file = await this.request(`/me/drive/items/${encodeURIComponent(folder.id)}:/${encodeURIComponent(name)}:/content`, {
+    // Use the special app-folder route directly. It creates the folder on first use
+    // and stays within Files.ReadWrite.AppFolder's least-privilege boundary.
+    const file = await this.request(`/me/drive/special/approot:/${encodeURIComponent(name)}:/content`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(sample),
     });
     if (!file?.id) throw new ConnectionError('OneDrive did not confirm a saved file. Load the latest sample before retrying.');
@@ -72,8 +67,7 @@ export class OneDriveTest {
   }
 
   async load() {
-    const folder = await this.folder();
-    let path = `/me/drive/items/${encodeURIComponent(folder.id)}/children?$select=id,name,size,lastModifiedDateTime&$top=100`;
+    let path = '/me/drive/special/approot/children?$select=id,name,size,lastModifiedDateTime&$top=100';
     const candidates = [];
     let pages = 0;
     while (path) {
@@ -87,7 +81,7 @@ export class OneDriveTest {
     candidates.sort((a, b) => String(b.lastModifiedDateTime).localeCompare(String(a.lastModifiedDateTime)) || b.name.localeCompare(a.name));
     const latest = candidates[0];
     if (latest.size > MAX_BYTES) throw new ConnectionError('The latest sample is larger than expected. Save a new test sample.');
-    const metadata = await this.request(`/me/drive/items/${encodeURIComponent(latest.id)}?$select=id,size,@microsoft.graph.downloadUrl`);
+    const metadata = await this.request(`/me/drive/special/approot:/${encodeURIComponent(latest.name)}?$select=id,size,@microsoft.graph.downloadUrl`);
     const address = metadata['@microsoft.graph.downloadUrl'];
     if (typeof address !== 'string' || !address.startsWith('https://') || metadata.size > MAX_BYTES) throw new ConnectionError('OneDrive did not return a valid sample download.');
     // Graph /content redirects fail CORS preflight in browsers. Use its signed URL,
