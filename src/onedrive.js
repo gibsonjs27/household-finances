@@ -3,6 +3,7 @@ const PREFIX = 'household-finances-connection-test-';
 const TEST_KIND = 'household-finances-connection-test';
 const MESSAGE = 'Household Finances connection test';
 const MAX_BYTES = 8192;
+const REQUEST_TIMEOUT_MS = 25000;
 
 export class ConnectionError extends Error {
   constructor(message, status = 0) { super(message); this.name = 'ConnectionError'; this.status = status; }
@@ -40,15 +41,17 @@ export class OneDriveTest {
     if (url.origin !== 'https://graph.microsoft.com' || !url.pathname.startsWith('/v1.0/')) throw new ConnectionError('Invalid OneDrive request address.');
     const token = await this.getAccessToken();
     let response;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     try {
       response = await this.fetcher(url.href, {
         ...options, credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer',
-        signal: AbortSignal.timeout(25000),
+        signal: controller.signal,
         headers: { ...options.headers, Authorization: `Bearer ${token}` },
       });
     } catch {
       throw new ConnectionError('Could not reach OneDrive. Check your connection and try again.');
-    }
+    } finally { clearTimeout(timeout); }
     if (!response.ok) throw responseError(response.status);
     return response.json();
   }
@@ -87,9 +90,12 @@ export class OneDriveTest {
     // Graph /content redirects fail CORS preflight in browsers. Use its signed URL,
     // with no bearer token, cookies, logging, or storage of that URL.
     let response;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     try {
-      response = await this.fetcher(address, { credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer', signal: AbortSignal.timeout(25000) });
+      response = await this.fetcher(address, { credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer', signal: controller.signal });
     } catch { throw new ConnectionError('Could not download the sample. Check your connection and try loading again.'); }
+    finally { clearTimeout(timeout); }
     if (!response.ok) throw new ConnectionError('The sample download expired or failed. Click Load latest sample again.');
     const text = await response.text();
     if (text.length > MAX_BYTES) throw new ConnectionError('The sample is larger than expected.');
