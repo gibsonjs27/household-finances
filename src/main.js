@@ -175,7 +175,7 @@ async function start() {
     if (account) {
       $('save-status').textContent = 'Ready to save a sample.';
       $('load-status').textContent = 'Ready to read from OneDrive.';
-      try { displayBudget(await drive.loadBudget()); }
+      try { const saved = await drive.loadBudget(); if (saved) displayBudget(saved); else $('budget-status').textContent = 'No saved budget found in OneDrive yet.'; }
       catch (error) { $('budget-status').textContent = `Saved budget could not be loaded: ${friendlyError(error)}`; }
     }
   } catch (error) {
