@@ -1,7 +1,7 @@
 import { PublicClientApplication, InteractionRequiredAuthError, CacheLookupPolicy } from '@azure/msal-browser';
 import { CLIENT_ID, SITE_URL, AUTHORITY, SCOPES } from './config.js';
 import { OneDriveTest, ConnectionError } from './onedrive.js';
-import { parseCsv, normalizeTransactions } from './transactions.js';
+import { parseCsv, normalizeTransactions, recategorizeTransactions } from './transactions.js';
 
 const $ = id => document.getElementById(id);
 const production = location.origin === new URL(SITE_URL).origin && location.pathname.startsWith(new URL(SITE_URL).pathname);
@@ -89,8 +89,10 @@ function updateBudgetTotals() {
 function displayBudget(saved) {
   if (!saved) return;
   const { month, plannedIncome, categories = {} } = saved.budget;
-  transactions = Array.isArray(saved.budget.transactions) ? saved.budget.transactions : [];
-  $('transaction-status').textContent = transactions.length ? `${transactions.length} saved transactions loaded from OneDrive.` : 'No transactions saved yet.';
+  const savedTransactions = Array.isArray(saved.budget.transactions) ? saved.budget.transactions : [];
+  transactions = recategorizeTransactions(savedTransactions);
+  const changedCategories = transactions.filter((row, index) => row.category !== savedTransactions[index]?.category).length;
+  $('transaction-status').textContent = transactions.length ? `${transactions.length} saved transactions loaded from OneDrive.${changedCategories ? ` ${changedCategories} were reclassified using the improved matching; save the budget to keep those updates.` : ''}` : 'No transactions saved yet.';
   $('budget-month').value = month || $('budget-month').value;
   $('budget-income').value = Number.isFinite(plannedIncome) ? plannedIncome : '';
   document.querySelectorAll('[data-budget]').forEach(input => { input.value = Number.isFinite(categories[input.dataset.budget]) ? categories[input.dataset.budget] : ''; });
