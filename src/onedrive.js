@@ -3,6 +3,7 @@ const PREFIX = 'household-finances-connection-test-';
 const TEST_KIND = 'household-finances-connection-test';
 const MESSAGE = 'Household Finances connection test';
 const MAX_BYTES = 8192;
+const MAX_BUDGET_BYTES = 2 * 1024 * 1024;
 const REQUEST_TIMEOUT_MS = 25000;
 const BUDGET_FILE = 'household-finances-budget-v1.json';
 
@@ -84,7 +85,7 @@ export class OneDriveTest {
     let metadata;
     try { metadata = await this.request(`/me/drive/special/approot:/${BUDGET_FILE}`); }
     catch (error) { if (error instanceof ConnectionError && error.status === 404) return null; throw error; }
-    if (metadata.size > MAX_BYTES) throw new ConnectionError('Your saved budget is larger than expected.');
+    if (metadata.size > MAX_BUDGET_BYTES) throw new ConnectionError('Your saved budget is larger than 2 MB.');
     const address = metadata['@microsoft.graph.downloadUrl'];
     if (typeof address !== 'string' || !address.startsWith('https://')) throw new ConnectionError('OneDrive did not return a valid saved-budget download.');
     let response;
