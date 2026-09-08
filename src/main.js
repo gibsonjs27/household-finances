@@ -25,6 +25,7 @@ function displayAccount() {
   $('save-sample').disabled = busy || !ready || !account || !production;
   $('load-sample').disabled = busy || !ready || !account || !production;
   $('budget-workspace').hidden = !account;
+  $('command-center').hidden = !account;
   document.querySelector('main').setAttribute('aria-busy', String(busy));
 }
 
@@ -81,6 +82,15 @@ function displayBudget(saved) {
   $('budget-income').value = Number.isFinite(plannedIncome) ? plannedIncome : '';
   document.querySelectorAll('[data-budget]').forEach(input => { input.value = Number.isFinite(categories[input.dataset.budget]) ? categories[input.dataset.budget] : ''; });
   updateBudgetTotals();
+  const income = Number(plannedIncome) || 0;
+  const expenses = Object.values(categories).reduce((sum, value) => sum + (Number(value) || 0), 0);
+  const money = value => value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+  $('command-month').textContent = new Date(`${month || $('budget-month').value}-01T12:00:00`).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  $('metric-income').textContent = money(income); $('metric-expenses').textContent = money(expenses); $('metric-surplus').textContent = money(income - expenses);
+  const summary = $('category-summary'); summary.replaceChildren();
+  const entries = Object.entries(categories).filter(([, value]) => Number(value));
+  if (!entries.length) { const empty = document.createElement('p'); empty.className = 'muted'; empty.textContent = 'No planned expenses yet.'; summary.append(empty); }
+  entries.forEach(([name, value]) => { const row = document.createElement('div'); row.className = 'category-row'; const label = document.createElement('span'); label.textContent = name; const amount = document.createElement('strong'); amount.textContent = money(Number(value)); row.append(label, amount); summary.append(row); });
   $('budget-status').textContent = `Loaded your saved budget from ${new Date(saved.savedAt).toLocaleString()}.`;
 }
 document.querySelectorAll('#budget-form input').forEach(input => input.addEventListener('input', updateBudgetTotals));
@@ -90,6 +100,7 @@ $('budget-form').addEventListener('submit', event => act(async () => {
   const categories = Object.fromEntries([...document.querySelectorAll('[data-budget]')].map(input => [input.dataset.budget, Number(input.value) || 0]));
   $('budget-status').textContent = 'Saving your budget to OneDrive…';
   const saved = await drive.saveBudget({ month: $('budget-month').value, plannedIncome: Number($('budget-income').value) || 0, categories });
+  displayBudget(saved);
   $('budget-status').textContent = `Saved to OneDrive ${new Date(saved.savedAt).toLocaleString()}.`;
   notice('Your monthly budget is saved privately in OneDrive.', 'success');
 }));
