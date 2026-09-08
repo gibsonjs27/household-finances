@@ -1,12 +1,14 @@
 import { PublicClientApplication, InteractionRequiredAuthError, CacheLookupPolicy } from '@azure/msal-browser';
 import { CLIENT_ID, SITE_URL, AUTHORITY, SCOPES } from './config.js';
 import { OneDriveTest, ConnectionError } from './onedrive.js';
+import { parseCsv, normalizeTransactions } from './transactions.js';
 
 const $ = id => document.getElementById(id);
 const production = location.origin === new URL(SITE_URL).origin && location.pathname.startsWith(new URL(SITE_URL).pathname);
 let busy = false;
 let ready = false;
 let account = null;
+let transactions = [];
 const msal = new PublicClientApplication({
   auth: { clientId: CLIENT_ID, authority: AUTHORITY, redirectUri: SITE_URL, postLogoutRedirectUri: SITE_URL, navigateToLoginRequestUrl: false },
   cache: { cacheLocation: 'sessionStorage' },
@@ -26,6 +28,7 @@ function displayAccount() {
   $('load-sample').disabled = busy || !ready || !account || !production;
   $('budget-workspace').hidden = !account;
   $('command-center').hidden = !account;
+  $('transactions-workspace').hidden = !account;
   if (account) {
     document.querySelector('.heading h1').textContent = 'Your financial command center';
     document.querySelector('.heading .eyebrow').textContent = 'MONTHLY OVERVIEW';
@@ -86,6 +89,7 @@ function updateBudgetTotals() {
 function displayBudget(saved) {
   if (!saved) return;
   const { month, plannedIncome, categories = {} } = saved.budget;
+  transactions = Array.isArray(saved.budget.transactions) ? saved.budget.transactions : [];
   $('budget-month').value = month || $('budget-month').value;
   $('budget-income').value = Number.isFinite(plannedIncome) ? plannedIncome : '';
   document.querySelectorAll('[data-budget]').forEach(input => { input.value = Number.isFinite(categories[input.dataset.budget]) ? categories[input.dataset.budget] : ''; });
@@ -107,11 +111,19 @@ $('budget-form').addEventListener('submit', event => act(async () => {
   event.preventDefault(); updateBudgetTotals();
   const categories = Object.fromEntries([...document.querySelectorAll('[data-budget]')].map(input => [input.dataset.budget, Number(input.value) || 0]));
   $('budget-status').textContent = 'Saving your budget to OneDrive…';
-  const saved = await drive.saveBudget({ month: $('budget-month').value, plannedIncome: Number($('budget-income').value) || 0, categories });
+  const saved = await drive.saveBudget({ month: $('budget-month').value, plannedIncome: Number($('budget-income').value) || 0, categories, transactions });
   displayBudget(saved);
   $('budget-status').textContent = `Saved to OneDrive ${new Date(saved.savedAt).toLocaleString()}.`;
   notice('Your monthly budget is saved privately in OneDrive.', 'success');
 }));
+$('transaction-file').addEventListener('change', async event => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  try {
+    transactions = normalizeTransactions(parseCsv(await file.text()));
+    $('transaction-status').textContent = `${transactions.length} transactions ready. Save your budget to store them in OneDrive.`;
+  } catch { $('transaction-status').textContent = 'That CSV could not be read. Export a standard bank CSV and try again.'; }
+});
 
 $('sign-in').addEventListener('click', () => act(async () => {
   notice('Opening Microsoft sign-in…');
