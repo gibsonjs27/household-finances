@@ -101,9 +101,14 @@ function displayBudget(saved) {
   $('command-month').textContent = new Date(`${month || $('budget-month').value}-01T12:00:00`).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   $('metric-income').textContent = money(income); $('metric-expenses').textContent = money(expenses); $('metric-surplus').textContent = money(income - expenses);
   const summary = $('category-summary'); summary.replaceChildren();
+  const aliases = { groceries: 'Living', grocery: 'Living', dining: 'Living', restaurants: 'Living', gas: 'Transportation', fuel: 'Transportation', utilities: 'Utilities', entertainment: 'Subscriptions' };
+  const actuals = transactions.filter(row => { const date = new Date(row.date); return !Number.isNaN(date.valueOf()) && date.toISOString().startsWith(month || '') && Number(row.amount) < 0; }).reduce((totals, row) => {
+    const key = aliases[String(row.category || '').toLowerCase()] || row.category || 'Other';
+    totals[key] = (totals[key] || 0) + Math.abs(Number(row.amount)); return totals;
+  }, {});
   const entries = Object.entries(categories).filter(([, value]) => Number(value));
   if (!entries.length) { const empty = document.createElement('p'); empty.className = 'muted'; empty.textContent = 'No planned expenses yet.'; summary.append(empty); }
-  entries.forEach(([name, value]) => { const row = document.createElement('div'); row.className = 'category-row'; const label = document.createElement('span'); label.textContent = name; const amount = document.createElement('strong'); amount.textContent = money(Number(value)); row.append(label, amount); summary.append(row); });
+  entries.forEach(([name, value]) => { const row = document.createElement('div'); row.className = 'category-row'; const label = document.createElement('span'); label.textContent = name; const amount = document.createElement('strong'); amount.textContent = `${money(Number(value))} planned · ${money(actuals[name] || 0)} actual`; row.append(label, amount); summary.append(row); });
   $('budget-status').textContent = `Loaded your saved budget from ${new Date(saved.savedAt).toLocaleString()}.`;
 }
 document.querySelectorAll('#budget-form input').forEach(input => input.addEventListener('input', updateBudgetTotals));

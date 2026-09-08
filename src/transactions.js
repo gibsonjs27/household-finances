@@ -7,7 +7,7 @@ export function parseCsv(text) {
 
 export function normalizeTransactions(rows) {
   return rows.map(row => ({
-    date: row['Posting Date'] || row['Post Date'] || row['Transaction Date'] || '',
+    date: (() => { const value = row['Posting Date'] || row['Post Date'] || row['Transaction Date'] || ''; const parsed = new Date(value); return Number.isNaN(parsed.valueOf()) ? value : parsed.toISOString().slice(0, 10); })(),
     description: row.Description || row.Details || '',
     amount: Number(String(row.Amount || '').replace(/[$,]/g, '')) || 0,
     category: row.Category || 'Other',
