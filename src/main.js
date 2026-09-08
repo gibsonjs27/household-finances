@@ -74,6 +74,15 @@ function updateBudgetTotals() {
   $('planned-expenses').textContent = expenses.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
   $('planned-surplus').textContent = (income - expenses).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 }
+function displayBudget(saved) {
+  if (!saved) return;
+  const { month, plannedIncome, categories = {} } = saved.budget;
+  $('budget-month').value = month || $('budget-month').value;
+  $('budget-income').value = Number.isFinite(plannedIncome) ? plannedIncome : '';
+  document.querySelectorAll('[data-budget]').forEach(input => { input.value = Number.isFinite(categories[input.dataset.budget]) ? categories[input.dataset.budget] : ''; });
+  updateBudgetTotals();
+  $('budget-status').textContent = `Loaded your saved budget from ${new Date(saved.savedAt).toLocaleString()}.`;
+}
 document.querySelectorAll('#budget-form input').forEach(input => input.addEventListener('input', updateBudgetTotals));
 $('budget-month').value = new Date().toISOString().slice(0, 7);
 $('budget-form').addEventListener('submit', event => act(async () => {
@@ -134,6 +143,8 @@ async function start() {
     if (account) {
       $('save-status').textContent = 'Ready to save a sample.';
       $('load-status').textContent = 'Ready to read from OneDrive.';
+      try { displayBudget(await drive.loadBudget()); }
+      catch (error) { $('budget-status').textContent = 'Your saved budget could not be loaded automatically. You can still enter and save a new one.'; }
     }
   } catch (error) {
     // Initialization failures cannot be recovered by calling login on an uninitialized instance.

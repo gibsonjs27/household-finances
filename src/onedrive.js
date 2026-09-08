@@ -80,6 +80,23 @@ export class OneDriveTest {
     return payload;
   }
 
+  async loadBudget() {
+    const listing = await this.request('/me/drive/special/approot/children?$select=id,name,size,lastModifiedDateTime&$top=100');
+    const file = listing?.value?.find(item => item?.name === BUDGET_FILE);
+    if (!file) return null;
+    if (file.size > MAX_BYTES) throw new ConnectionError('Your saved budget is larger than expected.');
+    const metadata = await this.request(`/me/drive/items/${encodeURIComponent(file.id)}`);
+    const address = metadata['@microsoft.graph.downloadUrl'];
+    if (typeof address !== 'string' || !address.startsWith('https://')) throw new ConnectionError('OneDrive did not return a valid saved-budget download.');
+    let response;
+    try { response = await this.fetcher.call(globalThis, address, { credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer' }); }
+    catch { throw new ConnectionError('Could not download your saved budget. Try again.'); }
+    if (!response.ok) throw new ConnectionError('Your budget download expired or failed. Try loading it again.');
+    const data = await response.json();
+    if (data?.schemaVersion !== 1 || data?.kind !== 'household-finances-budget' || !data?.budget || typeof data.budget !== 'object') throw new ConnectionError('The saved budget could not be read.');
+    return data;
+  }
+
   async load() {
     let path = '/me/drive/special/approot/children?$select=id,name,size,lastModifiedDateTime&$top=100';
     const candidates = [];
