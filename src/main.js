@@ -90,6 +90,7 @@ function displayBudget(saved) {
   if (!saved) return;
   const { month, plannedIncome, categories = {} } = saved.budget;
   transactions = Array.isArray(saved.budget.transactions) ? saved.budget.transactions : [];
+  $('transaction-status').textContent = transactions.length ? `${transactions.length} saved transactions loaded from OneDrive.` : 'No transactions saved yet.';
   $('budget-month').value = month || $('budget-month').value;
   $('budget-income').value = Number.isFinite(plannedIncome) ? plannedIncome : '';
   document.querySelectorAll('[data-budget]').forEach(input => { input.value = Number.isFinite(categories[input.dataset.budget]) ? categories[input.dataset.budget] : ''; });
