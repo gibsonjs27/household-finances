@@ -176,7 +176,7 @@ async function start() {
       $('save-status').textContent = 'Ready to save a sample.';
       $('load-status').textContent = 'Ready to read from OneDrive.';
       try { displayBudget(await drive.loadBudget()); }
-      catch (error) { $('budget-status').textContent = 'Your saved budget could not be loaded automatically. You can still enter and save a new one.'; }
+      catch (error) { $('budget-status').textContent = `Saved budget could not be loaded: ${friendlyError(error)}`; }
     }
   } catch (error) {
     // Initialization failures cannot be recovered by calling login on an uninitialized instance.
