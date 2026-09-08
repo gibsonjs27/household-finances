@@ -19,3 +19,7 @@ test('preserves commas within quoted bank descriptions', () => {
 test('reclassifies previously saved uncategorized transactions', () => {
   assert.deepEqual(recategorizeTransactions([{ date: '2026-09-01', description: 'NETFLIX.COM', amount: -15.49, category: 'Other' }]), [{ date: '2026-09-01', description: 'NETFLIX.COM', amount: -15.49, category: 'Subscriptions' }]);
 });
+
+test('keeps a category selected during review', () => {
+  assert.equal(recategorizeTransactions([{ date: '2026-09-01', description: 'MERCHANT', amount: -15.49, category: 'Housing' }])[0].category, 'Housing');
+});

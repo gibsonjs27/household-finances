@@ -66,5 +66,5 @@ export function normalizeTransactions(rows) {
 }
 
 export function recategorizeTransactions(rows) {
-  return rows.map(row => ({ ...row, category: suggestedCategory(row) }));
+  return rows.map(row => ({ ...row, category: row.category && row.category !== 'Other' ? row.category : suggestedCategory(row) }));
 }

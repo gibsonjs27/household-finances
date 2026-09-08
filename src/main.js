@@ -9,6 +9,7 @@ let busy = false;
 let ready = false;
 let account = null;
 let transactions = [];
+let savedBudget = null;
 const msal = new PublicClientApplication({
   auth: { clientId: CLIENT_ID, authority: AUTHORITY, redirectUri: SITE_URL, postLogoutRedirectUri: SITE_URL, navigateToLoginRequestUrl: false },
   cache: { cacheLocation: 'sessionStorage' },
@@ -88,6 +89,7 @@ function updateBudgetTotals() {
 }
 function displayBudget(saved) {
   if (!saved) return;
+  savedBudget = saved;
   const { month, plannedIncome, categories = {} } = saved.budget;
   const savedTransactions = Array.isArray(saved.budget.transactions) ? saved.budget.transactions : [];
   transactions = recategorizeTransactions(savedTransactions);
@@ -111,7 +113,28 @@ function displayBudget(saved) {
   const entries = Object.entries(categories).filter(([, value]) => Number(value));
   if (!entries.length) { const empty = document.createElement('p'); empty.className = 'muted'; empty.textContent = 'No planned expenses yet.'; summary.append(empty); }
   entries.forEach(([name, value]) => { const row = document.createElement('div'); row.className = 'category-row'; const label = document.createElement('span'); label.textContent = name; const amount = document.createElement('strong'); amount.textContent = `${money(Number(value))} planned · ${money(actuals[name] || 0)} actual`; row.append(label, amount); summary.append(row); });
+  renderTransactionReview();
   $('budget-status').textContent = `Loaded your saved budget from ${new Date(saved.savedAt).toLocaleString()}.`;
+}
+function renderTransactionReview() {
+  const body = $('transaction-review-body');
+  if (!body) return;
+  body.replaceChildren();
+  const budgetMonth = $('budget-month').value;
+  const visible = transactions.filter(row => row.date.startsWith(budgetMonth));
+  $('transaction-review-count').textContent = visible.length ? `${visible.length} transactions for this month` : 'No transactions for this month';
+  visible.forEach(row => {
+    const index = transactions.indexOf(row);
+    const line = document.createElement('tr');
+    const cells = [row.date, row.description, Number(row.amount).toLocaleString('en-US', { style: 'currency', currency: 'USD' })];
+    cells.forEach(value => { const cell = document.createElement('td'); cell.textContent = value; line.append(cell); });
+    const categoryCell = document.createElement('td');
+    const select = document.createElement('select');
+    ['Housing', 'Debt payments', 'Transportation', 'Utilities', 'Insurance', 'Living', 'Subscriptions', 'Other', 'Transfer', 'Income'].forEach(category => { const option = new Option(category, category, false, row.category === category); select.add(option); });
+    select.setAttribute('aria-label', `Category for ${row.description}`);
+    select.addEventListener('change', () => { transactions[index] = { ...transactions[index], category: select.value }; displayBudget({ ...savedBudget, budget: { ...savedBudget.budget, transactions } }); $('transaction-status').textContent = 'Category updated. Save your budget to OneDrive to keep this change.'; });
+    categoryCell.append(select); line.append(categoryCell); body.append(line);
+  });
 }
 document.querySelectorAll('#budget-form input').forEach(input => input.addEventListener('input', updateBudgetTotals));
 $('budget-month').value = new Date().toISOString().slice(0, 7);
@@ -129,6 +152,7 @@ $('transaction-file').addEventListener('change', async event => {
   if (!file) return;
   try {
     transactions = normalizeTransactions(parseCsv(await file.text()));
+    renderTransactionReview();
     $('transaction-status').textContent = `${transactions.length} transactions ready. Save your budget to store them in OneDrive.`;
   } catch { $('transaction-status').textContent = 'That CSV could not be read. Export a standard bank CSV and try again.'; }
 });
