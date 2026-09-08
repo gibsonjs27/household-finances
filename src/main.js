@@ -26,6 +26,14 @@ function displayAccount() {
   $('load-sample').disabled = busy || !ready || !account || !production;
   $('budget-workspace').hidden = !account;
   $('command-center').hidden = !account;
+  if (account) {
+    document.querySelector('.heading h1').textContent = 'Your financial command center';
+    document.querySelector('.heading .eyebrow').textContent = 'MONTHLY OVERVIEW';
+    document.querySelector('.heading .intro').textContent = 'Your private budget and financial records, saved to OneDrive.';
+    document.querySelector('.content').insertBefore($('command-center'), document.querySelector('.connection-card'));
+    document.querySelector('.test-grid').hidden = true;
+    document.querySelector('.device-check').hidden = true;
+  }
   document.querySelector('main').setAttribute('aria-busy', String(busy));
 }
 
